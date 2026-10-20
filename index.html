@@ -1,3 +1,14 @@
+<!--
+  Copyright 2026 Zerubba Levi
+  This simulation is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0).
+  
+  License Restrictions Summary:
+  - Attribution: You must give appropriate credit and provide a link to the license.
+  - NonCommercial: You may not use the material for commercial purposes.
+  - ShareAlike: If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+  
+  To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/4.0/
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -38,6 +49,7 @@
             <label class="block text-sm text-gray-300 mb-1">Substrate:</label>
             <select id="substrate-select" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white mb-4 transition outline-none focus:border-blue-500">
                 <option value="methyl">Methyl Bromide</option>
+                <option value="allyl">Allyl Bromide</option>
                 <option value="ethyl">Ethyl Bromide</option>
                 <option value="isopropyl">Isopropyl Bromide</option>
                 <option value="secbutyl">(R)-2-Bromobutane (Chiral)</option>
@@ -51,7 +63,7 @@
     </div>
 
     <!-- Top Right UI -->
-    <div class="absolute top-4 right-4 z-10 interactive">
+    <div class="absolute top-4 right-4 z-10 interactive flex flex-col items-end space-y-2">
         <div class="glass-panel w-64">
             <label class="block text-sm text-gray-300 mb-2">View Mode:</label>
             <div class="flex space-x-2">
@@ -59,45 +71,86 @@
                 <button id="btn-sf" class="flex-1 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition font-semibold">Space Filling</button>
             </div>
         </div>
+
+        <!-- Pi Orbitals Toggle Button (Allyl Bromide Only) -->
+        <button id="btn-orbitals" class="hidden glass-panel w-64 py-2 border border-purple-500 text-purple-300 hover:bg-purple-600 hover:text-white rounded text-sm transition font-bold shadow-lg text-center">
+            SHOW PI ORBITALS
+        </button>
+    </div>
+
+    <!-- Bottom Left About / Copyright Button -->
+    <div class="absolute bottom-4 left-4 z-10 interactive">
+        <button id="open-info-modal" class="glass-panel py-2 px-4 border border-gray-500 text-gray-300 hover:bg-gray-700 hover:text-white rounded text-sm transition font-semibold shadow-lg">
+            ℹ️ About / Copyright
+        </button>
+    </div>
+
+    <!-- Info / Copyright Modal Overlay -->
+    <div id="info-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex justify-center items-center p-4">
+        <div class="bg-slate-900 border border-slate-700 text-white rounded-xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
+            <div class="bg-slate-800 px-5 py-4 flex justify-between items-center border-b border-slate-700">
+                <span class="font-bold text-base">About & Copyright Information</span>
+                <button id="close-info-modal" class="bg-transparent border-none text-gray-400 hover:text-white text-xl font-bold cursor-pointer">&times;</button>
+            </div>
+            <div class="p-6 text-sm leading-relaxed space-y-4">
+                <div>
+                    <strong class="text-white">S<sub>N</sub>2 Reaction Simulation</strong><br>
+                    Created by <strong class="text-white">Zerubba Levi</strong> for organic chemistry education.
+                </div>
+                <div class="bg-slate-800/60 p-3 rounded-lg border border-slate-700 text-xs">
+                    <strong class="text-gray-200">License:</strong> Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)<br>
+                    Other professors and educators are free to use, share, and adapt this simulation for non-commercial educational purposes, provided full attribution is given and modified versions share this same license.
+                </div>
+                <div>
+                    <strong class="text-white">Feedback & Revisions:</strong><br>
+                    Found a bug or have a suggestion for improving this simulation? Reach out with suggested revisions and feedback at <a href="mailto:zelevi@cabrillo.edu" class="text-blue-400 hover:underline font-semibold">zelevi@cabrillo.edu</a>.
+                </div>
+            </div>
+            <div class="bg-slate-800 px-5 py-3 border-t border-slate-700 flex justify-end">
+                <button id="modal-ok-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold text-xs tracking-wider uppercase transition">Close</button>
+            </div>
+        </div>
     </div>
 
     <!-- Bottom Center Play Controls -->
-    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-xl z-10 interactive">
+    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-2xl z-10 interactive">
         <div class="glass-panel flex flex-col items-center">
-            <div class="flex justify-between w-full text-xs text-gray-400 mb-2 font-semibold">
+            <div class="flex justify-between w-full text-xs text-gray-400 mb-2 font-semibold px-2">
                 <span>Reactants</span>
                 <span>Transition State</span>
                 <span>Products</span>
             </div>
-            <div class="flex items-center w-full space-x-4">
+            <div class="flex items-center w-full space-x-3">
+                <!-- Speed button (turns red when at 1/4 speed) -->
+                <button id="btn-speed" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs transition font-bold whitespace-nowrap shadow flex-shrink-0">
+                    1x Speed
+                </button>
+                
                 <button id="btn-play" class="w-10 h-10 flex-shrink-0 rounded-full bg-blue-600 hover:bg-blue-500 flex items-center justify-center transition shadow-lg">
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <button id="btn-speed" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition font-bold whitespace-nowrap shadow">
-                    1x Speed
-                </button>
+                
                 <input type="range" id="reaction-slider" min="0" max="1" step="0.01" value="0" class="flex-grow">
+                
+                <button id="btn-loop" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs transition font-bold whitespace-nowrap shadow flex-shrink-0">
+                    Loop: OFF
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Bottom Right Graph & Toggle -->
     <div class="absolute bottom-4 right-4 z-10 interactive flex flex-col items-end">
-        <!-- Energy Diagram Popup -->
         <div id="graph-container" class="glass-panel mb-16 w-[420px] h-[300px] relative hidden flex-col justify-center items-center shadow-2xl" style="padding: 0.5rem;">
             <svg viewBox="0 0 140 100" class="w-full h-full overflow-visible">
-                <!-- Titles & Labels -->
                 <text x="71.5" y="6" text-anchor="middle" fill="#ffffff" font-size="4.5" font-weight="bold" letter-spacing="0.5">REACTION COORDINATE</text>
                 <text x="71.5" y="97" text-anchor="middle" fill="#d1d5db" font-size="3.5" font-weight="bold" letter-spacing="0.5">REACTION PROGRESS</text>
                 <text x="-50" y="3" transform="rotate(-90)" text-anchor="middle" fill="#d1d5db" font-size="3.5" font-weight="bold" letter-spacing="0.5">POTENTIAL ENERGY</text>
                 
-                <!-- Axes -->
                 <line x1="8" y1="12" x2="8" y2="88" stroke="#4b5563" stroke-width="1" stroke-linecap="round"/>
                 <line x1="8" y1="88" x2="135" y2="88" stroke="#4b5563" stroke-width="1" stroke-linecap="round"/>
                 
-                <!-- Energy Curve Path -->
                 <path id="energy-curve" d="" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Current State Dot -->
                 <circle id="energy-dot" cx="8" cy="60" r="2" fill="#ef4444" stroke="#fff" stroke-width="0.5"/>
             </svg>
         </div>
@@ -112,13 +165,26 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        // Constants & Config
+        // Modal Logic
+        const infoModal = document.getElementById('info-modal');
+        const openInfoModalBtn = document.getElementById('open-info-modal');
+        const closeInfoModalBtn = document.getElementById('close-info-modal');
+        const modalOkBtn = document.getElementById('modal-ok-btn');
+
+        openInfoModalBtn.addEventListener('click', () => { infoModal.classList.remove('hidden'); });
+        closeInfoModalBtn.addEventListener('click', () => { infoModal.classList.add('hidden'); });
+        modalOkBtn.addEventListener('click', () => { infoModal.classList.add('hidden'); });
+        infoModal.addEventListener('click', (e) => {
+            if (e.target === infoModal) infoModal.classList.add('hidden');
+        });
+
         const ATOM_COLORS = { C: 0x808080, H: 0xffffff, O: 0xff0000, Br: 0x228B22 };
         const RADII = {
             BS: { C: 0.4, H: 0.25, O: 0.35, Br: 0.5 },
             SF: { C: 1.3, H: 0.9, O: 1.2, Br: 1.5 } 
         };
-        const BOND_RADIUS = 0.1;
+        const BOND_RADIUS = 0.09;
+        const DOUBLE_BOND_RADIUS = 0.065;
         const BOND_COLOR = 0xaaaaaa;
         
         let currentMode = 'BS'; 
@@ -126,6 +192,9 @@
         let reactionProgress = 0; 
         let isPlaying = false;
         let isQuarterSpeed = false;
+        let isLooping = false;
+        let playDirection = 1;
+        let showOrbitals = false;
         const baseSpeed = 0.005;
         
         const substrateData = {
@@ -133,6 +202,11 @@
                 desc: "Minimal steric hindrance. The nucleophile (OH⁻) has unhindered access to the electrophilic carbon. S<sub>N</sub>2 reaction is very fast.",
                 energyBarrier: 20,
                 subTypes: ['H', 'H', 'H']
+            },
+            allyl: {
+                desc: "Allyl substrate: The transition state is strongly stabilized by orbital overlap with the adjacent π-system (conjugation), lowering activation energy significantly.",
+                energyBarrier: 16,
+                subTypes: ['CH_CH2', 'H', 'H']
             },
             ethyl: {
                 desc: "Slight steric hindrance from one methyl group. Backside attack is slightly hindered but S<sub>N</sub>2 is still the primary pathway.",
@@ -151,12 +225,11 @@
             },
             tertbutyl: {
                 desc: "Severe steric hindrance from three bulky methyl groups. Backside attack is blocked. S<sub>N</sub>2 reaction does not occur (proceeds via S<sub>N</sub>1 instead).",
-                energyBarrier: 65,
+                energyBarrier: 95,
                 subTypes: ['CH3_C', 'CH3_C', 'CH3_C']
             }
         };
 
-        // Scene Setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
         camera.position.set(0, 4, 10);
@@ -171,37 +244,80 @@
         controls.minDistance = 4;
         controls.maxDistance = 20;
 
-        // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(5, 10, 7);
         scene.add(dirLight);
 
-        // Molecule Data Structure
         let moleculeGroup = new THREE.Group();
+        let orbitalGroup = new THREE.Group();
         scene.add(moleculeGroup);
+        scene.add(orbitalGroup);
         
         let atomMeshes = [];
         let bondMeshes = [];
+        let orbitalMeshes = [];
 
         const getMaterial = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.1 });
         const bondMaterial = new THREE.MeshStandardMaterial({ color: BOND_COLOR, roughness: 0.5 });
+
+        const redOrbitalMat = new THREE.MeshStandardMaterial({ color: 0xef4444, transparent: true, opacity: 0.7, roughness: 0.2, side: THREE.DoubleSide });
+        const blueOrbitalMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.7, roughness: 0.2, side: THREE.DoubleSide });
 
         function createSphere(radius, color) {
             return new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 32), getMaterial(color));
         }
 
-        // Molecule Builder
+        function createPOrbitalLobeGeometry() {
+            const points = [];
+            const N = 80;
+            const length = 1.35;
+            const Rmax = 0.55;
+
+            for (let i = 0; i <= N; i++) {
+                const t = i / N;
+                const y = t * length;
+                let radius;
+
+                if (t <= 0.70) {
+                    const tNorm = t / 0.70;
+                    radius = Rmax * Math.pow(tNorm, 0.8);
+                } else {
+                    const tNorm = (t - 0.70) / 0.30;
+                    radius = Rmax * Math.sqrt(Math.max(0, 1 - tNorm * tNorm));
+                }
+
+                points.push(new THREE.Vector2(Math.max(0, radius), y));
+            }
+            return new THREE.LatheGeometry(points, 32);
+        }
+
+        const pOrbitalGeom = createPOrbitalLobeGeometry();
+
+        function createPOrbitalPair() {
+            const topLobe = new THREE.Mesh(pOrbitalGeom, redOrbitalMat);
+            const botLobe = new THREE.Mesh(pOrbitalGeom, blueOrbitalMat);
+            botLobe.rotation.x = Math.PI;
+            
+            const pair = new THREE.Group();
+            pair.add(topLobe);
+            pair.add(botLobe);
+            return pair;
+        }
+
         function buildMolecule() {
             scene.remove(moleculeGroup);
+            scene.remove(orbitalGroup);
             moleculeGroup = new THREE.Group();
+            orbitalGroup = new THREE.Group();
             scene.add(moleculeGroup);
+            scene.add(orbitalGroup);
             
             atomMeshes = [];
             bondMeshes = [];
+            orbitalMeshes = [];
 
-            // Central Carbon & LG & Nuc
             const cCentral = createSphere(RADII[currentMode].C, ATOM_COLORS.C);
             moleculeGroup.add(cCentral);
             atomMeshes.push({ mesh: cCentral, type: 'C', ref: 'central' });
@@ -217,7 +333,6 @@
             atomMeshes.push({ mesh: oNuc, type: 'O', ref: 'Nuc_O' });
             atomMeshes.push({ mesh: hNuc, type: 'H', ref: 'Nuc_H' });
 
-            // Substituents
             const subTypes = substrateData[currentSubstrate].subTypes;
 
             for (let i = 0; i < 3; i++) {
@@ -234,6 +349,24 @@
                         const h = createSphere(RADII[currentMode].H, ATOM_COLORS.H);
                         moleculeGroup.add(h);
                         atomMeshes.push({ mesh: h, type: 'H', ref: `sub_${i}_h${j}`, slot: i, subType: 'CH3_H', hIndex: j });
+                    }
+                } else if (subType === 'CH_CH2') {
+                    const c1 = createSphere(RADII[currentMode].C, ATOM_COLORS.C);
+                    moleculeGroup.add(c1);
+                    atomMeshes.push({ mesh: c1, type: 'C', ref: `sub_${i}`, slot: i, subType: 'CH_CH2_C1' });
+                    
+                    const h1 = createSphere(RADII[currentMode].H, ATOM_COLORS.H);
+                    moleculeGroup.add(h1);
+                    atomMeshes.push({ mesh: h1, type: 'H', ref: `sub_${i}_h0`, slot: i, subType: 'CH_CH2_H1' });
+
+                    const c2 = createSphere(RADII[currentMode].C, ATOM_COLORS.C);
+                    moleculeGroup.add(c2);
+                    atomMeshes.push({ mesh: c2, type: 'C', ref: `sub_${i}_c2`, slot: i, subType: 'CH_CH2_C2' });
+
+                    for(let j=0; j<2; j++) {
+                        const h = createSphere(RADII[currentMode].H, ATOM_COLORS.H);
+                        moleculeGroup.add(h);
+                        atomMeshes.push({ mesh: h, type: 'H', ref: `sub_${i}_c2_h${j}`, slot: i, subType: 'CH_CH2_C2_H', hIndex: j });
                     }
                 } else if (subType === 'CH2CH3_C1') { 
                     const c1 = createSphere(RADII[currentMode].C, ATOM_COLORS.C);
@@ -255,12 +388,27 @@
                 }
             }
 
-            // Pool of bonds
             for(let i=0; i<60; i++) { 
-                const bond = new THREE.Mesh(new THREE.CylinderGeometry(BOND_RADIUS, BOND_RADIUS, 1, 8), bondMaterial);
+                const bond = new THREE.Mesh(new THREE.CylinderGeometry(BOND_RADIUS, BOND_RADIUS, 1, 16), bondMaterial);
                 bond.visible = false;
                 moleculeGroup.add(bond);
                 bondMeshes.push(bond);
+            }
+
+            if (currentSubstrate === 'allyl') {
+                for(let i=0; i<3; i++) {
+                    const pair = createPOrbitalPair();
+                    orbitalGroup.add(pair);
+                    orbitalMeshes.push(pair);
+                }
+            }
+
+            const btnOrbitals = document.getElementById('btn-orbitals');
+            if (currentSubstrate === 'allyl') {
+                btnOrbitals.classList.remove('hidden');
+            } else {
+                btnOrbitals.classList.add('hidden');
+                showOrbitals = false;
             }
 
             updateEnergyGraph();
@@ -269,7 +417,7 @@
 
         function updateEnergyGraph() {
             const Ea = substrateData[currentSubstrate].energyBarrier;
-            const visual_Ea = Ea * 0.6;
+            const visual_Ea = Ea * 0.48;
             let d = "";
             for(let i=0; i<=100; i++) {
                 let t = i/100;
@@ -300,9 +448,8 @@
             const hNuc = atomMeshes.find(a => a.ref === 'Nuc_H');
             hNuc.mesh.position.set(oh_x - 0.7, 0.7, 0);
 
-            // Energy Graph Dot Tracking Update
             const Ea = substrateData[currentSubstrate].energyBarrier;
-            const visual_Ea = Ea * 0.6;
+            const visual_Ea = Ea * 0.48;
             let dot_B = 15 / (1 + Math.exp(-10 * (t - 0.5))) + 60; 
             let dot_A = visual_Ea * Math.exp(-Math.pow(t - 0.5, 2) / 0.03); 
             let dot_y = dot_B - dot_A;
@@ -311,7 +458,6 @@
             dot.setAttribute('cx', dot_x);
             dot.setAttribute('cy', dot_y);
 
-            // Stereochemistry Label Overlay Tracking
             const stereoLabel = document.getElementById('stereo-label');
             if (currentSubstrate === 'secbutyl') {
                 const vector = centralPos.clone().project(camera);
@@ -325,48 +471,50 @@
                 stereoLabel.classList.add('hidden');
             }
 
-            // Walden Inversion Angles
             const angleDeg = 109.47 - (t * (109.47 - 70.53));
             const angleRad = angleDeg * Math.PI / 180;
 
             let bIdx = 0;
-            const updateBond = (p1, p2, forceHide, isDashed = false) => {
+            const updateBond = (p1, p2, forceHide, isDashed = false, offsetVec = null, customRadius = BOND_RADIUS) => {
                 const dist = p1.distanceTo(p2);
                 if (forceHide || currentMode === 'SF' || dist > 4.5) return;
                 
+                let startP1 = p1;
+                let startP2 = p2;
+                if (offsetVec) {
+                    startP1 = p1.clone().add(offsetVec);
+                    startP2 = p2.clone().add(offsetVec);
+                }
+
                 if (isDashed) {
                     const dashCount = 5;
                     const dashLength = dist / (dashCount * 2 - 1);
-                    const dir = p2.clone().sub(p1).normalize();
+                    const dir = startP2.clone().sub(startP1).normalize();
                     for (let j = 0; j < dashCount; j++) {
                         const b = bondMeshes[bIdx++];
                         if (!b) return;
                         b.visible = true;
-                        b.scale.set(1, dashLength, 1);
+                        b.scale.set(customRadius / BOND_RADIUS, dashLength, customRadius / BOND_RADIUS);
                         const offset = (j * 2 + 0.5) * dashLength;
-                        b.position.copy(p1).add(dir.clone().multiplyScalar(offset));
+                        b.position.copy(startP1).add(dir.clone().multiplyScalar(offset));
                         b.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                     }
                 } else {
                     const b = bondMeshes[bIdx++];
                     if (!b) return;
                     b.visible = true;
-                    b.scale.set(1, dist, 1);
-                    b.position.copy(p1).lerp(p2, 0.5);
-                    b.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+                    b.scale.set(customRadius / BOND_RADIUS, dist, customRadius / BOND_RADIUS);
+                    b.position.copy(startP1).lerp(startP2, 0.5);
+                    b.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), startP2.clone().sub(startP1).normalize());
                 }
             };
 
-            // Corrected Bond Formations:
-            // C-Br (Leaving Group) is solid initially, turns dashed during transition (t > 0.15)
             const brIsDashed = t > 0.15;
             updateBond(centralPos, brAtom.mesh.position, false, brIsDashed);
 
-            // C-OH (Nucleophile) is dashed initially, turns solid as reaction nears completion (t >= 0.85)
             const ohIsDashed = t < 0.85;
             updateBond(centralPos, oNuc.mesh.position, false, ohIsDashed);
 
-            // O-H Bond is always solid
             updateBond(oNuc.mesh.position, hNuc.mesh.position, false, false);
 
             for (let i = 0; i < 3; i++) {
@@ -378,13 +526,12 @@
                 const subZ = c_sub_dist * Math.sin(angleRad) * Math.sin(phi);
                 
                 const subPos = new THREE.Vector3(subX, subY, subZ);
-                const mainAtom = atomMeshes.find(a => a.slot === i && (a.subType === 'H' || a.subType === 'CH3_C' || a.subType === 'CH2CH3_C1'));
+                const mainAtom = atomMeshes.find(a => a.slot === i && (a.subType === 'H' || a.subType === 'CH3_C' || a.subType === 'CH2CH3_C1' || a.subType === 'CH_CH2_C1'));
                 if(mainAtom) {
                     mainAtom.mesh.position.copy(subPos);
                     updateBond(centralPos, subPos, false);
                 }
 
-                // Stable Local Basis to completely eliminate spin/rotation during Walden Inversion
                 const dir = subPos.clone().normalize();
                 let localRight = new THREE.Vector3(1, 0, 0).cross(dir);
                 if (localRight.lengthSq() < 0.01) {
@@ -394,7 +541,6 @@
                 const localUp = dir.clone().cross(localRight).normalize();
 
                 if (mainAtom && mainAtom.subType === 'CH3_C') {
-                    // Constant offset phase for methyl groups keeps hydrogens firmly locked in place
                     const fixedPhase = Math.PI / 6;
 
                     for(let j=0; j<3; j++) {
@@ -415,9 +561,87 @@
                         if(hAtom) hAtom.mesh.position.copy(finalHPos);
                         updateBond(subPos, finalHPos, false);
                     }
+                } else if (mainAtom && mainAtom.subType === 'CH_CH2_C1') {
+                    const h1Atom = atomMeshes.find(a => a.slot === i && a.subType === 'CH_CH2_H1');
+                    const c2Atom = atomMeshes.find(a => a.slot === i && a.subType === 'CH_CH2_C2');
+
+                    const c0_to_c1 = subPos.clone().normalize();
+
+                    const rad60 = 60 * Math.PI / 180; 
+                    const vC2_dir = c0_to_c1.clone().multiplyScalar(Math.cos(rad60))
+                        .add(localRight.clone().multiplyScalar(Math.sin(rad60))).normalize();
+
+                    const rad120 = 120 * Math.PI / 180;
+                    const c1_to_c0_dir = c0_to_c1.clone().negate();
+                    const vH1_dir = c1_to_c0_dir.clone().multiplyScalar(Math.cos(-rad120))
+                        .add(localRight.clone().multiplyScalar(Math.sin(-rad120))).normalize();
+
+                    const c2Pos = subPos.clone().add(vC2_dir.clone().multiplyScalar(1.34));
+                    if (c2Atom) c2Atom.mesh.position.copy(c2Pos);
+
+                    const c1_c2_dir = vC2_dir.clone();
+                    const camDir = camera.position.clone().sub(subPos).normalize();
+                    let doubleBondNormal = new THREE.Vector3().crossVectors(c1_c2_dir, camDir).normalize();
+                    if (doubleBondNormal.lengthSq() < 0.01) {
+                        doubleBondNormal = localUp.clone();
+                    }
+                    const dOffset = doubleBondNormal.multiplyScalar(0.13);
+                    updateBond(subPos, c2Pos, false, false, dOffset, DOUBLE_BOND_RADIUS);
+                    updateBond(subPos, c2Pos, false, false, dOffset.clone().negate(), DOUBLE_BOND_RADIUS);
+
+                    const h1Pos = subPos.clone().add(vH1_dir.multiplyScalar(1.09));
+                    if (h1Atom) h1Atom.mesh.position.copy(h1Pos);
+                    updateBond(subPos, h1Pos, false);
+
+                    const vC2_back = subPos.clone().sub(c2Pos).normalize();
+                    
+                    const planeNorm = new THREE.Vector3().crossVectors(c0_to_c1, c1_c2_dir).normalize();
+                    if (planeNorm.lengthSq() < 0.001) planeNorm.copy(localUp);
+                    
+                    const vInPlane = new THREE.Vector3().crossVectors(planeNorm, vC2_back).normalize();
+
+                    const dirH_a = vC2_back.clone().multiplyScalar(Math.cos(rad120))
+                        .add(vInPlane.clone().multiplyScalar(Math.sin(rad120))).normalize();
+
+                    const dirH_b = vC2_back.clone().multiplyScalar(Math.cos(-rad120))
+                        .add(vInPlane.clone().multiplyScalar(Math.sin(-rad120))).normalize();
+
+                    const h2a_mesh = atomMeshes.find(a => a.slot === i && a.subType === 'CH_CH2_C2_H' && a.hIndex === 0);
+                    const h2b_mesh = atomMeshes.find(a => a.slot === i && a.subType === 'CH_CH2_C2_H' && a.hIndex === 1);
+
+                    const posH_a = c2Pos.clone().add(dirH_a.multiplyScalar(1.09));
+                    const posH_b = c2Pos.clone().add(dirH_b.multiplyScalar(1.09));
+
+                    if (h2a_mesh) h2a_mesh.mesh.position.copy(posH_a);
+                    if (h2b_mesh) h2b_mesh.mesh.position.copy(posH_b);
+
+                    updateBond(c2Pos, posH_a, false);
+                    updateBond(c2Pos, posH_b, false);
+
+                    if (currentSubstrate === 'allyl' && orbitalMeshes.length === 3) {
+                        orbitalGroup.visible = showOrbitals;
+
+                        if (showOrbitals) {
+                            const pNorm = localUp.clone();
+                            const tsFactor = Math.exp(-Math.pow(t - 0.5, 2) / 0.04);
+
+                            orbitalMeshes[0].position.copy(centralPos);
+                            orbitalMeshes[0].quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pNorm);
+                            const centralScale = 0.15 + 0.95 * tsFactor; 
+                            orbitalMeshes[0].scale.setScalar(centralScale);
+
+                            orbitalMeshes[1].position.copy(subPos);
+                            orbitalMeshes[1].quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pNorm);
+                            orbitalMeshes[1].scale.setScalar(1.0);
+
+                            orbitalMeshes[2].position.copy(c2Pos);
+                            orbitalMeshes[2].quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pNorm);
+                            orbitalMeshes[2].scale.setScalar(1.0);
+                        }
+                    }
                 } else if (mainAtom && mainAtom.subType === 'CH2CH3_C1') {
                     let c2Pos;
-                    const fixedPhase = Math.PI; // Anti-conformation placement for C4
+                    const fixedPhase = Math.PI; 
                     
                     for(let j=0; j<3; j++) {
                         let hLocalAngle = fixedPhase + j * 120 * Math.PI / 180;
@@ -447,64 +671,39 @@
                     }
                     if (c2Pos) {
                         const c2Dir = c2Pos.clone().sub(subPos).normalize();
-                        let c2Right = new THREE.Vector3(1,0,0).cross(c2Dir);
-                        if(c2Right.lengthSq() < 0.01) c2Right = new THREE.Vector3(0,1,0).cross(c2Dir);
+                        let c2Right = new THREE.Vector3(1, 0, 0).cross(c2Dir);
+                        if (c2Right.lengthSq() < 0.01) c2Right = new THREE.Vector3(0, 1, 0).cross(c2Dir);
                         c2Right.normalize();
                         const c2Up = c2Dir.clone().cross(c2Right).normalize();
 
+                        const methylPhase = Math.PI / 6;
                         for(let k=0; k<3; k++) {
-                            const hkAngle = k * 120 * Math.PI / 180;
-                            const hkDist = 1.1;
-                            const tetra = 70.53 * Math.PI / 180;
-                            const hkX = hkDist * Math.cos(tetra);
-                            const hkR = hkDist * Math.sin(tetra);
-                            const hkY = hkR * Math.cos(hkAngle);
-                            const hkZ = hkR * Math.sin(hkAngle);
+                            const methylAtom = atomMeshes.find(a => a.slot === i && a.subType === 'CH2CH3_C2_H' && a.hIndex === k);
+                            const mAngle = methylPhase + k * 120 * Math.PI / 180;
+                            const mDist = 1.1;
+                            const mX = mDist * Math.cos(tetraAngle);
+                            const mR = mDist * Math.sin(tetraAngle);
+                            const mY = mR * Math.cos(mAngle);
+                            const mZ = mR * Math.sin(mAngle);
 
-                            const hkPos = c2Pos.clone()
-                                .add(c2Dir.clone().multiplyScalar(hkX))
-                                .add(c2Right.clone().multiplyScalar(hkY))
-                                .add(c2Up.clone().multiplyScalar(hkZ));
+                            const mFinal = c2Pos.clone()
+                                .add(c2Dir.clone().multiplyScalar(mX))
+                                .add(c2Right.clone().multiplyScalar(mY))
+                                .add(c2Up.clone().multiplyScalar(mZ));
 
-                            const hkAtom = atomMeshes.find(a => a.slot === i && a.subType === 'CH2CH3_C2_H' && a.hIndex === k);
-                            if(hkAtom) hkAtom.mesh.position.copy(hkPos);
-                            updateBond(c2Pos, hkPos, false);
+                            if(methylAtom) methylAtom.mesh.position.copy(mFinal);
+                            updateBond(c2Pos, mFinal, false);
                         }
                     }
                 }
             }
 
-            // Hide unused bonds
-            while(bIdx < bondMeshes.length) {
-                bondMeshes[bIdx++].visible = false;
+            for(let i = bIdx; i < bondMeshes.length; i++) {
+                bondMeshes[i].visible = false;
             }
         }
 
-        // Animation Loop
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            
-            if (isPlaying) {
-                const speed = isQuarterSpeed ? (baseSpeed / 4) : baseSpeed;
-                reactionProgress += speed;
-                
-                if (reactionProgress > 1) {
-                    reactionProgress = 1;
-                    isPlaying = false;
-                    document.getElementById('btn-play').innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
-                }
-                document.getElementById('reaction-slider').value = reactionProgress;
-                updatePositions();
-            }
-            if(!isPlaying && currentSubstrate === 'secbutyl') {
-                updatePositions(); 
-            }
-            
-            renderer.render(scene, camera);
-        }
-
-        // UI Event Listeners
+        // Event Listeners & UI Controls
         document.getElementById('substrate-select').addEventListener('change', (e) => {
             currentSubstrate = e.target.value;
             document.getElementById('steric-info').innerHTML = substrateData[currentSubstrate].desc;
@@ -513,60 +712,84 @@
 
         document.getElementById('btn-bs').addEventListener('click', () => {
             currentMode = 'BS';
-            document.getElementById('btn-bs').classList.replace('bg-gray-700', 'bg-blue-600');
-            document.getElementById('btn-sf').classList.replace('bg-blue-600', 'bg-gray-700');
+            document.getElementById('btn-bs').className = "flex-1 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm transition font-semibold";
+            document.getElementById('btn-sf').className = "flex-1 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition font-semibold";
             buildMolecule();
         });
 
         document.getElementById('btn-sf').addEventListener('click', () => {
             currentMode = 'SF';
-            document.getElementById('btn-sf').classList.replace('bg-gray-700', 'bg-blue-600');
-            document.getElementById('btn-bs').classList.replace('bg-blue-600', 'bg-gray-700');
+            document.getElementById('btn-sf').className = "flex-1 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm transition font-semibold";
+            document.getElementById('btn-bs').className = "flex-1 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition font-semibold";
             buildMolecule();
         });
 
-        // Graph Toggle
-        document.getElementById('btn-graph-toggle').addEventListener('click', (e) => {
-            const graphDiv = document.getElementById('graph-container');
-            const isHidden = graphDiv.classList.contains('hidden');
-            
-            if (isHidden) {
-                graphDiv.classList.replace('hidden', 'flex');
-                e.target.innerText = "HIDE GRAPH";
-                e.target.classList.replace('text-green-400', 'text-white');
-                e.target.classList.replace('bg-gray-800', 'bg-green-600');
+        const playBtn = document.getElementById('btn-play');
+        playBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playBtn.innerHTML = isPlaying ? 
+                '<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>' : 
+                '<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        });
+
+        const speedBtn = document.getElementById('btn-speed');
+        speedBtn.addEventListener('click', () => {
+            isQuarterSpeed = !isQuarterSpeed;
+            if (isQuarterSpeed) {
+                speedBtn.innerText = "0.25x Speed";
+                speedBtn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                speedBtn.classList.add('bg-red-600', 'hover:bg-red-500');
             } else {
-                graphDiv.classList.replace('flex', 'hidden');
-                e.target.innerText = "SHOW GRAPH";
-                e.target.classList.replace('text-white', 'text-green-400');
-                e.target.classList.replace('bg-green-600', 'bg-gray-800');
+                speedBtn.innerText = "1x Speed";
+                speedBtn.classList.remove('bg-red-600', 'hover:bg-red-500');
+                speedBtn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+            }
+        });
+
+        const loopBtn = document.getElementById('btn-loop');
+        loopBtn.addEventListener('click', () => {
+            isLooping = !isLooping;
+            loopBtn.innerText = isLooping ? "Loop: ON" : "Loop: OFF";
+            if (isLooping) {
+                loopBtn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                loopBtn.classList.add('bg-blue-600', 'hover:bg-blue-500');
+            } else {
+                loopBtn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+                loopBtn.classList.add('bg-gray-700', 'hover:bg-gray-600');
             }
         });
 
         const slider = document.getElementById('reaction-slider');
         slider.addEventListener('input', (e) => {
             reactionProgress = parseFloat(e.target.value);
-            isPlaying = false;
-            document.getElementById('btn-play').innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
             updatePositions();
         });
 
-        document.getElementById('btn-play').addEventListener('click', () => {
-            if (reactionProgress >= 1) reactionProgress = 0;
-            isPlaying = !isPlaying;
-            document.getElementById('btn-play').innerHTML = isPlaying 
-                ? `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
-                : `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+        const btnOrbitals = document.getElementById('btn-orbitals');
+        btnOrbitals.addEventListener('click', () => {
+            showOrbitals = !showOrbitals;
+            if (showOrbitals) {
+                btnOrbitals.classList.remove('border-purple-500', 'text-purple-300', 'hover:bg-purple-600');
+                btnOrbitals.classList.add('bg-purple-600', 'text-white', 'border-purple-400');
+                btnOrbitals.innerText = "HIDE PI ORBITALS";
+            } else {
+                btnOrbitals.classList.remove('bg-purple-600', 'text-white', 'border-purple-400');
+                btnOrbitals.classList.add('border-purple-500', 'text-purple-300', 'hover:bg-purple-600');
+                btnOrbitals.innerText = "SHOW PI ORBITALS";
+            }
         });
 
-        document.getElementById('btn-speed').addEventListener('click', (e) => {
-            isQuarterSpeed = !isQuarterSpeed;
-            if (isQuarterSpeed) {
-                e.target.innerText = "1/4 Speed";
-                e.target.classList.replace('bg-gray-700', 'bg-blue-600');
+        const graphContainer = document.getElementById('graph-container');
+        const graphToggleBtn = document.getElementById('btn-graph-toggle');
+        graphToggleBtn.addEventListener('click', () => {
+            if (graphContainer.classList.contains('hidden')) {
+                graphContainer.classList.remove('hidden');
+                graphContainer.classList.add('flex');
+                graphToggleBtn.innerText = "HIDE GRAPH";
             } else {
-                e.target.innerText = "1x Speed";
-                e.target.classList.replace('bg-blue-600', 'bg-gray-700');
+                graphContainer.classList.add('hidden');
+                graphContainer.classList.remove('flex');
+                graphToggleBtn.innerText = "SHOW GRAPH";
             }
         });
 
@@ -576,9 +799,39 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Init
-        document.getElementById('steric-info').innerHTML = substrateData[currentSubstrate].desc;
         buildMolecule();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isPlaying) {
+                let currentSpeed = baseSpeed * (isQuarterSpeed ? 0.25 : 1.0);
+                reactionProgress += currentSpeed * playDirection;
+
+                if (reactionProgress >= 1) {
+                    reactionProgress = 1;
+                    if (isLooping) {
+                        playDirection = -1;
+                    } else {
+                        isPlaying = false;
+                        playBtn.innerHTML = '<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+                    }
+                } else if (reactionProgress <= 0) {
+                    reactionProgress = 0;
+                    if (isLooping) {
+                        playDirection = 1;
+                    } else {
+                        isPlaying = false;
+                    }
+                }
+                slider.value = reactionProgress;
+                updatePositions();
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
         animate();
     </script>
 </body>
