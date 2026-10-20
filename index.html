@@ -121,7 +121,6 @@
                 <span>Products</span>
             </div>
             <div class="flex items-center w-full space-x-3">
-                <!-- Speed button (turns red when at 1/4 speed) -->
                 <button id="btn-speed" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs transition font-bold whitespace-nowrap shadow flex-shrink-0">
                     1x Speed
                 </button>
@@ -640,6 +639,7 @@
                         }
                     }
                 } else if (mainAtom && mainAtom.subType === 'CH2CH3_C1') {
+                    // --- RESTORED WORKING WORKING GEOMETRY FOR (R)-2-BROMOBUTANE ---
                     let c2Pos;
                     const fixedPhase = Math.PI; 
                     
@@ -671,39 +671,71 @@
                     }
                     if (c2Pos) {
                         const c2Dir = c2Pos.clone().sub(subPos).normalize();
-                        let c2Right = new THREE.Vector3(1, 0, 0).cross(c2Dir);
-                        if (c2Right.lengthSq() < 0.01) c2Right = new THREE.Vector3(0, 1, 0).cross(c2Dir);
+                        let c2Right = new THREE.Vector3(1,0,0).cross(c2Dir);
+                        if(c2Right.lengthSq() < 0.01) c2Right = new THREE.Vector3(0,1,0).cross(c2Dir);
                         c2Right.normalize();
                         const c2Up = c2Dir.clone().cross(c2Right).normalize();
 
-                        const methylPhase = Math.PI / 6;
                         for(let k=0; k<3; k++) {
-                            const methylAtom = atomMeshes.find(a => a.slot === i && a.subType === 'CH2CH3_C2_H' && a.hIndex === k);
-                            const mAngle = methylPhase + k * 120 * Math.PI / 180;
-                            const mDist = 1.1;
-                            const mX = mDist * Math.cos(tetraAngle);
-                            const mR = mDist * Math.sin(tetraAngle);
-                            const mY = mR * Math.cos(mAngle);
-                            const mZ = mR * Math.sin(mAngle);
+                            const hkAngle = k * 120 * Math.PI / 180;
+                            const hkDist = 1.1;
+                            const tetra = 70.53 * Math.PI / 180;
+                            const hkX = hkDist * Math.cos(tetra);
+                            const hkR = hkDist * Math.sin(tetra);
+                            const hkY = hkR * Math.cos(hkAngle);
+                            const hkZ = hkR * Math.sin(hkAngle);
 
-                            const mFinal = c2Pos.clone()
-                                .add(c2Dir.clone().multiplyScalar(mX))
-                                .add(c2Right.clone().multiplyScalar(mY))
-                                .add(c2Up.clone().multiplyScalar(mZ));
+                            const hkPos = c2Pos.clone()
+                                .add(c2Dir.clone().multiplyScalar(hkX))
+                                .add(c2Right.clone().multiplyScalar(hkY))
+                                .add(c2Up.clone().multiplyScalar(hkZ));
 
-                            if(methylAtom) methylAtom.mesh.position.copy(mFinal);
-                            updateBond(c2Pos, mFinal, false);
+                            const hkAtom = atomMeshes.find(a => a.slot === i && a.subType === 'CH2CH3_C2_H' && a.hIndex === k);
+                            if(hkAtom) hkAtom.mesh.position.copy(hkPos);
+                            updateBond(c2Pos, hkPos, false);
                         }
                     }
                 }
             }
 
-            for(let i = bIdx; i < bondMeshes.length; i++) {
-                bondMeshes[i].visible = false;
+            while(bIdx < bondMeshes.length) {
+                bondMeshes[bIdx++].visible = false;
             }
         }
 
-        // Event Listeners & UI Controls
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            if (isPlaying) {
+                const speed = (isQuarterSpeed ? (baseSpeed / 4) : baseSpeed) * playDirection;
+                reactionProgress += speed;
+                
+                if (isLooping) {
+                    if (reactionProgress >= 1) {
+                        reactionProgress = 1;
+                        playDirection = -1;
+                    } else if (reactionProgress <= 0) {
+                        reactionProgress = 0;
+                        playDirection = 1;
+                    }
+                } else {
+                    if (reactionProgress > 1) {
+                        reactionProgress = 1;
+                        isPlaying = false;
+                        document.getElementById('btn-play').innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                    }
+                }
+                document.getElementById('reaction-slider').value = reactionProgress;
+                updatePositions();
+            }
+            if(!isPlaying && (currentSubstrate === 'secbutyl' || currentSubstrate === 'allyl')) {
+                updatePositions(); 
+            }
+            
+            renderer.render(scene, camera);
+        }
+
         document.getElementById('substrate-select').addEventListener('change', (e) => {
             currentSubstrate = e.target.value;
             document.getElementById('steric-info').innerHTML = substrateData[currentSubstrate].desc;
@@ -712,84 +744,88 @@
 
         document.getElementById('btn-bs').addEventListener('click', () => {
             currentMode = 'BS';
-            document.getElementById('btn-bs').className = "flex-1 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm transition font-semibold";
-            document.getElementById('btn-sf').className = "flex-1 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition font-semibold";
+            document.getElementById('btn-bs').classList.replace('bg-gray-700', 'bg-blue-600');
+            document.getElementById('btn-sf').classList.replace('bg-blue-600', 'bg-gray-700');
             buildMolecule();
         });
 
         document.getElementById('btn-sf').addEventListener('click', () => {
             currentMode = 'SF';
-            document.getElementById('btn-sf').className = "flex-1 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm transition font-semibold";
-            document.getElementById('btn-bs').className = "flex-1 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition font-semibold";
+            document.getElementById('btn-sf').classList.replace('bg-gray-700', 'bg-blue-600');
+            document.getElementById('btn-bs').classList.replace('bg-blue-600', 'bg-gray-700');
             buildMolecule();
         });
 
-        const playBtn = document.getElementById('btn-play');
-        playBtn.addEventListener('click', () => {
-            isPlaying = !isPlaying;
-            playBtn.innerHTML = isPlaying ? 
-                '<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>' : 
-                '<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-        });
-
-        const speedBtn = document.getElementById('btn-speed');
-        speedBtn.addEventListener('click', () => {
-            isQuarterSpeed = !isQuarterSpeed;
-            if (isQuarterSpeed) {
-                speedBtn.innerText = "0.25x Speed";
-                speedBtn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
-                speedBtn.classList.add('bg-red-600', 'hover:bg-red-500');
+        document.getElementById('btn-orbitals').addEventListener('click', (e) => {
+            showOrbitals = !showOrbitals;
+            if (showOrbitals) {
+                e.target.innerText = "HIDE PI ORBITALS";
+                e.target.classList.replace('border-purple-500', 'border-purple-300');
+                e.target.classList.replace('text-purple-300', 'text-white');
+                e.target.classList.add('bg-purple-600');
             } else {
-                speedBtn.innerText = "1x Speed";
-                speedBtn.classList.remove('bg-red-600', 'hover:bg-red-500');
-                speedBtn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                e.target.innerText = "SHOW PI ORBITALS";
+                e.target.classList.replace('text-white', 'text-purple-300');
+                e.target.classList.remove('bg-purple-600');
             }
+            updatePositions();
         });
 
-        const loopBtn = document.getElementById('btn-loop');
-        loopBtn.addEventListener('click', () => {
-            isLooping = !isLooping;
-            loopBtn.innerText = isLooping ? "Loop: ON" : "Loop: OFF";
-            if (isLooping) {
-                loopBtn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
-                loopBtn.classList.add('bg-blue-600', 'hover:bg-blue-500');
+        document.getElementById('btn-graph-toggle').addEventListener('click', (e) => {
+            const graphDiv = document.getElementById('graph-container');
+            const isHidden = graphDiv.classList.contains('hidden');
+            
+            if (isHidden) {
+                graphDiv.classList.replace('hidden', 'flex');
+                e.target.innerText = "HIDE GRAPH";
+                e.target.classList.replace('text-green-400', 'text-white');
+                e.target.classList.replace('bg-gray-800', 'bg-green-600');
             } else {
-                loopBtn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
-                loopBtn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                graphDiv.classList.replace('flex', 'hidden');
+                e.target.innerText = "SHOW GRAPH";
+                e.target.classList.replace('text-white', 'text-green-400');
+                e.target.classList.replace('bg-green-600', 'bg-gray-800');
             }
         });
 
         const slider = document.getElementById('reaction-slider');
         slider.addEventListener('input', (e) => {
             reactionProgress = parseFloat(e.target.value);
+            isPlaying = false;
+            document.getElementById('btn-play').innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
             updatePositions();
         });
 
-        const btnOrbitals = document.getElementById('btn-orbitals');
-        btnOrbitals.addEventListener('click', () => {
-            showOrbitals = !showOrbitals;
-            if (showOrbitals) {
-                btnOrbitals.classList.remove('border-purple-500', 'text-purple-300', 'hover:bg-purple-600');
-                btnOrbitals.classList.add('bg-purple-600', 'text-white', 'border-purple-400');
-                btnOrbitals.innerText = "HIDE PI ORBITALS";
+        document.getElementById('btn-play').addEventListener('click', () => {
+            if (reactionProgress >= 1) reactionProgress = 0;
+            isPlaying = !isPlaying;
+            playDirection = 1;
+            document.getElementById('btn-play').innerHTML = isPlaying 
+                ? `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
+                : `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+        });
+
+        document.getElementById('btn-speed').addEventListener('click', (e) => {
+            isQuarterSpeed = !isQuarterSpeed;
+            if (isQuarterSpeed) {
+                e.target.innerText = "1/4 Speed";
+                e.target.classList.replace('bg-gray-700', 'bg-red-600');
+                e.target.classList.replace('hover:bg-gray-600', 'hover:bg-red-500');
             } else {
-                btnOrbitals.classList.remove('bg-purple-600', 'text-white', 'border-purple-400');
-                btnOrbitals.classList.add('border-purple-500', 'text-purple-300', 'hover:bg-purple-600');
-                btnOrbitals.innerText = "SHOW PI ORBITALS";
+                e.target.innerText = "1x Speed";
+                e.target.classList.replace('bg-red-600', 'bg-gray-700');
+                e.target.classList.replace('hover:bg-red-500', 'hover:bg-gray-600');
             }
         });
 
-        const graphContainer = document.getElementById('graph-container');
-        const graphToggleBtn = document.getElementById('btn-graph-toggle');
-        graphToggleBtn.addEventListener('click', () => {
-            if (graphContainer.classList.contains('hidden')) {
-                graphContainer.classList.remove('hidden');
-                graphContainer.classList.add('flex');
-                graphToggleBtn.innerText = "HIDE GRAPH";
+        document.getElementById('btn-loop').addEventListener('click', (e) => {
+            isLooping = !isLooping;
+            if (isLooping) {
+                e.target.innerText = "Loop: ON";
+                e.target.classList.replace('bg-gray-700', 'bg-blue-600');
             } else {
-                graphContainer.classList.add('hidden');
-                graphContainer.classList.remove('flex');
-                graphToggleBtn.innerText = "SHOW GRAPH";
+                e.target.innerText = "Loop: OFF";
+                e.target.classList.replace('bg-blue-600', 'bg-gray-700');
             }
         });
 
@@ -799,39 +835,8 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        document.getElementById('steric-info').innerHTML = substrateData[currentSubstrate].desc;
         buildMolecule();
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (isPlaying) {
-                let currentSpeed = baseSpeed * (isQuarterSpeed ? 0.25 : 1.0);
-                reactionProgress += currentSpeed * playDirection;
-
-                if (reactionProgress >= 1) {
-                    reactionProgress = 1;
-                    if (isLooping) {
-                        playDirection = -1;
-                    } else {
-                        isPlaying = false;
-                        playBtn.innerHTML = '<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-                    }
-                } else if (reactionProgress <= 0) {
-                    reactionProgress = 0;
-                    if (isLooping) {
-                        playDirection = 1;
-                    } else {
-                        isPlaying = false;
-                    }
-                }
-                slider.value = reactionProgress;
-                updatePositions();
-            }
-
-            controls.update();
-            renderer.render(scene, camera);
-        }
-
         animate();
     </script>
 </body>
