@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SN2 Reaction Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a202c; color: white; font-family: 'Inter', sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; padding: 1rem; }
+        .interactive { pointer-events: auto; }
+        .glass-panel { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 1rem; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #3b82f6; cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #4b5563; border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <!-- Top Bar -->
+        <div class="flex justify-between items-start interactive">
+            <div class="glass-panel max-w-sm">
+                <h1 class="text-xl font-bold mb-2">S<sub>N</sub>2 Reaction</h1>
+                <label class="block text-sm text-gray-300 mb-1">Substrate:</label>
+                <select id="substrate-select" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white mb-4">
+                    <option value="methyl">Methyl Bromide</option>
+                    <option value="ethyl">Ethyl Bromide</option>
+                    <option value="isopropyl">Isopropyl Bromide</option>
+                    <option value="tertbutyl">tert-Butyl Bromide</option>
+                </select>
+                
+                <div id="steric-info" class="text-sm text-gray-300 border-l-2 border-blue-500 pl-3">
+                    Minimal steric hindrance. The nucleophile (OH⁻) has unhindered access to the electrophilic carbon. S<sub>N</sub>2 reaction is very fast.
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <label class="block text-sm text-gray-300 mb-2">View Mode:</label>
+                <div class="flex space-x-2">
+                    <button id="btn-bs" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm transition">Ball & Stick</button>
+                    <button id="btn-sf" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition">Space Filling</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="glass-panel interactive mb-4 mx-auto w-full max-w-2xl flex flex-col items-center">
+            <div class="flex justify-between w-full text-xs text-gray-400 mb-2">
+                <span>Reactants</span>
+                <span>Transition State</span>
+                <span>Products</span>
+            </div>
+            <div class="flex items-center w-full space-x-4">
+                <button id="btn-play" class="w-10 h-10 flex-shrink-0 rounded-full bg-blue-600 hover:bg-blue-500 flex items-center justify-center transition">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button id="btn-speed" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition font-bold whitespace-nowrap">
+                    1x Speed
+                </button>
+                <input type="range" id="reaction-slider" min="0" max="1" step="0.01" value="0" class="flex-grow">
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // Constants & Config
+        const ATOM_COLORS = { C: 0x808080, H: 0xffffff, O: 0xff0000, Br: 0x228B22 };
+        const RADII = {
+            BS: { C: 0.4, H: 0.25, O: 0.35, Br: 0.5 },
+            // Slightly scaled back SF model (midway between 1.0/1.5 scale)
+            SF: { C: 1.3, H: 0.9, O: 1.2, Br: 1.5 } 
+        };
+        const BOND_RADIUS = 0.1;
+        const BOND_COLOR = 0xaaaaaa;
+        
+        let currentMode = 'BS'; // 'BS' or 'SF'
+        let currentSubstrate = 'methyl';
+        let reactionProgress = 0; // 0 to 1
+        let isPlaying = false;
+        let isQuarterSpeed = false;
+        const baseSpeed = 0.005;
+        
+        const stericDescriptions = {
+            methyl: "Minimal steric hindrance. The nucleophile (OH⁻) has unhindered access to the electrophilic carbon. S<sub>N</sub>2 reaction is very fast.",
+            ethyl: "Slight steric hindrance from one methyl group. Backside attack is slightly hindered but S<sub>N</sub>2 is still the primary pathway.",
+            isopropyl: "Moderate steric hindrance from two methyl groups. S<sub>N</sub>2 rate is significantly slower due to crowding.",
+            tertbutyl: "Severe steric hindrance from three bulky methyl groups. Backside attack is blocked. S<sub>N</sub>2 reaction does not occur (proceeds via S<sub>N</sub>1 instead)."
+        };
+
+        // Scene Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 4, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        // Limit zoom in and zoom out
+        controls.minDistance = 4;
+        controls.maxDistance = 20;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // Molecule Data Structure
+        let moleculeGroup = new THREE.Group();
+        scene.add(moleculeGroup);
+        
+        let atomMeshes = [];
+        let bondMeshes = [];
+
+        // Materials
+        const getMaterial = (color, mode) => {
+            return new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.1 });
+        };
+        const bondMaterial = new THREE.MeshStandardMaterial({ color: BOND_COLOR, roughness: 0.5 });
+
+        // Helpers
+        function createSphere(radius, color) {
+            const geo = new THREE.SphereGeometry(radius, 32, 32);
+            const mat = getMaterial(color, currentMode);
+            const mesh = new THREE.Mesh(geo, mat);
+            return mesh;
+        }
+
+        // Molecule Builder
+        function buildMolecule() {
+            // Clear existing
+            scene.remove(moleculeGroup);
+            moleculeGroup = new THREE.Group();
+            scene.add(moleculeGroup);
+            atomMeshes = [];
+            bondMeshes = [];
+
+            // Central Carbon (fixed at origin)
+            const cCentral = createSphere(RADII[currentMode].C, ATOM_COLORS.C);
+            moleculeGroup.add(cCentral);
+            atomMeshes.push({ mesh: cCentral, type: 'C', ref: 'central' });
+
+            // Bromine (Moving)
+            const br = createSphere(RADII[currentMode].Br, ATOM_COLORS.Br);
+            moleculeGroup.add(br);
+            atomMeshes.push({ mesh: br, type: 'Br', ref: 'LG' });
+
+            // Hydroxide Nucleophile (Moving)
+            const oNuc = createSphere(RADII[currentMode].O, ATOM_COLORS.O);
+            const hNuc = createSphere(RADII[currentMode].H, ATOM_COLORS.H);
+            moleculeGroup.add(oNuc);
+            moleculeGroup.add(hNuc);
+            atomMeshes.push({ mesh: oNuc, type: 'O', ref: 'Nuc_O' });
+            atomMeshes.push({ mesh: hNuc, type: 'H', ref: 'Nuc_H' });
+
+            // Substituents based on type
+            const subTypes = {
+                methyl: ['H', 'H', 'H'],
+                ethyl: ['CH3', 'H', 'H'],
+                isopropyl: ['CH3', 'CH3', 'H'],
+                tertbutyl: ['CH3', 'CH3', 'CH3']
+            }[currentSubstrate];
+
+            for (let i = 0; i < 3; i++) {
+                const subType = subTypes[i];
+                if (subType === 'H') {
+                    const h = createSphere(RADII[currentMode].H, ATOM_COLORS.H);
+                    moleculeGroup.add(h);
+                    atomMeshes.push({ mesh: h, type: 'H', ref: `sub_${i}`, slot: i, subType: 'H' });
+                } else {
+                    const cGroup = createSphere(RADII[currentMode].C, ATOM_COLORS.C);
+                    moleculeGroup.add(cGroup);
+                    atomMeshes.push({ mesh: cGroup, type: 'C', ref: `sub_${i}`, slot: i, subType: 'CH3_C' });
+                    
+                    // Add 3 hydrogens attached to this carbon
+                    for(let j=0; j<3; j++) {
+                        const h = createSphere(RADII[currentMode].H, ATOM_COLORS.H);
+                        moleculeGroup.add(h);
+                        atomMeshes.push({ mesh: h, type: 'H', ref: `sub_${i}_h${j}`, slot: i, subType: 'CH3_H', hIndex: j });
+                    }
+                }
+            }
+
+            // Create bonds placeholder
+            for(let i=0; i<25; i++) { 
+                const bond = new THREE.Mesh(new THREE.CylinderGeometry(BOND_RADIUS, BOND_RADIUS, 1, 8), bondMaterial);
+                bond.visible = false;
+                moleculeGroup.add(bond);
+                bondMeshes.push(bond);
+            }
+
+            updatePositions();
+        }
+
+        function updatePositions() {
+            const t = reactionProgress;
+            
+            // X-axis coordinates
+            const br_x = 1.8 + 4 * Math.pow(t, 2); 
+            const oh_x = -1.4 - 4 * Math.pow(1-t, 2);
+
+            const centralPos = new THREE.Vector3(0, 0, 0);
+            
+            // Update LG and Nuc
+            const brAtom = atomMeshes.find(a => a.ref === 'LG');
+            brAtom.mesh.position.set(br_x, 0, 0);
+
+            const oNuc = atomMeshes.find(a => a.ref === 'Nuc_O');
+            oNuc.mesh.position.set(oh_x, 0, 0);
+            
+            const hNuc = atomMeshes.find(a => a.ref === 'Nuc_H');
+            hNuc.mesh.position.set(oh_x - 0.7, 0.7, 0); // fixed relative to O
+
+            // Substituent angles (Walden Inversion)
+            const angleDeg = 109.47 - (t * (109.47 - 70.53));
+            const angleRad = angleDeg * Math.PI / 180;
+
+            let bIdx = 0;
+            const updateBond = (p1, p2, forceHide) => {
+                const b = bondMeshes[bIdx++];
+                if (!b || currentMode === 'SF' || forceHide) {
+                    if(b) b.visible = false;
+                    return;
+                }
+                const dist = p1.distanceTo(p2);
+                if (dist > 3.0) { // Bond broken
+                    b.visible = false;
+                    return;
+                }
+                b.visible = true;
+                b.scale.set(1, dist, 1);
+                b.position.copy(p1).lerp(p2, 0.5);
+                b.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+            };
+
+            updateBond(centralPos, brAtom.mesh.position, false);
+            updateBond(centralPos, oNuc.mesh.position, false);
+            updateBond(oNuc.mesh.position, hNuc.mesh.position, false);
+
+            for (let i = 0; i < 3; i++) {
+                const phi = (i * 120) * Math.PI / 180;
+                
+                const c_sub_dist = atomMeshes.find(a => a.slot === i).subType === 'H' ? 1.1 : 1.5;
+                
+                const subX = c_sub_dist * Math.cos(angleRad);
+                const subY = c_sub_dist * Math.sin(angleRad) * Math.cos(phi);
+                const subZ = c_sub_dist * Math.sin(angleRad) * Math.sin(phi);
+                
+                const subPos = new THREE.Vector3(subX, subY, subZ);
+
+                // Find main substituent atom
+                const mainAtom = atomMeshes.find(a => a.slot === i && (a.subType === 'H' || a.subType === 'CH3_C'));
+                mainAtom.mesh.position.copy(subPos);
+                updateBond(centralPos, subPos, false);
+
+                if (mainAtom.subType === 'CH3_C') {
+                    // Position the 3 hydrogens around this carbon
+                    for(let j=0; j<3; j++) {
+                        const hAtom = atomMeshes.find(a => a.slot === i && a.hIndex === j);
+                        // Slight continuous rotation over time
+                        const hLocalAngle = (j * 120 + (t*60)) * Math.PI / 180; 
+                        
+                        const chDist = 1.1; 
+                        const tetraAngle = 70.53 * Math.PI / 180; 
+                        const hLocalX = chDist * Math.cos(tetraAngle); // pointing away from main carbon
+                        const r = chDist * Math.sin(tetraAngle);
+                        const hLocalY = r * Math.cos(hLocalAngle);
+                        const hLocalZ = r * Math.sin(hLocalAngle);
+                        
+                        // Fix for the rapid flipping: Replace dynamic vector crossing with a fixed analytical 
+                        // spherical basis. This prevents singularities/flips when crossing the YZ plane at t=0.5
+                        const dir = new THREE.Vector3(Math.cos(angleRad), Math.sin(angleRad) * Math.cos(phi), Math.sin(angleRad) * Math.sin(phi));
+                        const right = new THREE.Vector3(0, -Math.sin(phi), Math.cos(phi));
+                        const up = new THREE.Vector3(-Math.sin(angleRad), Math.cos(angleRad) * Math.cos(phi), Math.cos(angleRad) * Math.sin(phi));
+
+                        const finalHPos = subPos.clone()
+                            .add(dir.multiplyScalar(hLocalX))
+                            .add(right.multiplyScalar(hLocalY))
+                            .add(up.multiplyScalar(hLocalZ));
+                            
+                        hAtom.mesh.position.copy(finalHPos);
+                        updateBond(subPos, finalHPos, false);
+                    }
+                }
+            }
+
+            // Hide remaining unused bonds
+            while(bIdx < bondMeshes.length) {
+                bondMeshes[bIdx++].visible = false;
+            }
+        }
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            if (isPlaying) {
+                // Adjust speed based on the speed toggle
+                const speed = isQuarterSpeed ? (baseSpeed / 4) : baseSpeed;
+                reactionProgress += speed;
+                
+                if (reactionProgress > 1) {
+                    reactionProgress = 1;
+                    isPlaying = false;
+                    document.getElementById('btn-play').innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                }
+                document.getElementById('reaction-slider').value = reactionProgress;
+                updatePositions();
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // UI Event Listeners
+        document.getElementById('substrate-select').addEventListener('change', (e) => {
+            currentSubstrate = e.target.value;
+            document.getElementById('steric-info').innerHTML = stericDescriptions[currentSubstrate];
+            buildMolecule();
+        });
+
+        document.getElementById('btn-bs').addEventListener('click', () => {
+            currentMode = 'BS';
+            document.getElementById('btn-bs').classList.replace('bg-gray-700', 'bg-blue-600');
+            document.getElementById('btn-sf').classList.replace('bg-blue-600', 'bg-gray-700');
+            buildMolecule();
+        });
+
+        document.getElementById('btn-sf').addEventListener('click', () => {
+            currentMode = 'SF';
+            document.getElementById('btn-sf').classList.replace('bg-gray-700', 'bg-blue-600');
+            document.getElementById('btn-bs').classList.replace('bg-blue-600', 'bg-gray-700');
+            buildMolecule();
+        });
+
+        const slider = document.getElementById('reaction-slider');
+        slider.addEventListener('input', (e) => {
+            reactionProgress = parseFloat(e.target.value);
+            isPlaying = false;
+            document.getElementById('btn-play').innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+            updatePositions();
+        });
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            if (reactionProgress >= 1) reactionProgress = 0; // Reset if at end
+            isPlaying = !isPlaying;
+            document.getElementById('btn-play').innerHTML = isPlaying 
+                ? `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
+                : `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+        });
+
+        // Speed Toggle Button
+        document.getElementById('btn-speed').addEventListener('click', (e) => {
+            isQuarterSpeed = !isQuarterSpeed;
+            if (isQuarterSpeed) {
+                e.target.innerText = "1/4 Speed";
+                e.target.classList.replace('bg-gray-700', 'bg-blue-600');
+            } else {
+                e.target.innerText = "1x Speed";
+                e.target.classList.replace('bg-blue-600', 'bg-gray-700');
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Init
+        document.getElementById('steric-info').innerHTML = stericDescriptions[currentSubstrate];
+        buildMolecule();
+        animate();
+    </script>
+</body>
+</html>
