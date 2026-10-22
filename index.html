@@ -261,35 +261,39 @@
         const getMaterial = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.1 });
         const bondMaterial = new THREE.MeshStandardMaterial({ color: BOND_COLOR, roughness: 0.5 });
 
-        const redOrbitalMat = new THREE.MeshStandardMaterial({ color: 0xef4444, transparent: true, opacity: 0.7, roughness: 0.2, side: THREE.DoubleSide });
-        const blueOrbitalMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.7, roughness: 0.2, side: THREE.DoubleSide });
+        const makeOrbitalMat = (color) => new THREE.MeshPhysicalMaterial({
+            color, transparent: true, opacity: 0.6, roughness: 0.15, metalness: 0,
+            clearcoat: 0.8, clearcoatRoughness: 0.2, side: THREE.DoubleSide, depthWrite: false
+        });
+        const redOrbitalMat = makeOrbitalMat(0xef4444);
+        const blueOrbitalMat = makeOrbitalMat(0x3b82f6);
 
         function createSphere(radius, color) {
             return new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 32), getMaterial(color));
         }
 
+        // One lobe of a 2p orbital: tapers to a point at the nucleus, then swells smoothly into
+        // a truly spherical (hemispherical) outer end.
         function createPOrbitalLobeGeometry() {
             const points = [];
-            const N = 80;
-            const length = 1.35;
-            const Rmax = 0.55;
-
-            for (let i = 0; i <= N; i++) {
-                const t = i / N;
-                const y = t * length;
-                let radius;
-
-                if (t <= 0.70) {
-                    const tNorm = t / 0.70;
-                    radius = Rmax * Math.pow(tNorm, 0.8);
-                } else {
-                    const tNorm = (t - 0.70) / 0.30;
-                    radius = Rmax * Math.sqrt(Math.max(0, 1 - tNorm * tNorm));
-                }
-
-                points.push(new THREE.Vector2(Math.max(0, radius), y));
+            const L = 1.4;          // total lobe length
+            const R = 0.5;          // radius of the spherical end cap (= maximum lobe radius)
+            const yc = L - R;       // centre of the cap sphere
+            const Nneck = 60, Ncap = 40;
+            // Neck: radius rises from 0 at the nucleus to R at the sphere's equator, with zero slope there
+            // so it blends smoothly into the cap.
+            for (let i = 0; i < Nneck; i++) {
+                const s = i / Nneck;
+                points.push(new THREE.Vector2(R * Math.sin((Math.PI / 2) * Math.pow(s, 1.2)), s * yc));
             }
-            return new THREE.LatheGeometry(points, 32);
+            // Cap: exact hemisphere of radius R
+            for (let i = 0; i <= Ncap; i++) {
+                const phi = (Math.PI / 2) * (i / Ncap);
+                points.push(new THREE.Vector2(R * Math.cos(phi), yc + R * Math.sin(phi)));
+            }
+            const geom = new THREE.LatheGeometry(points, 64);
+            geom.computeVertexNormals();
+            return geom;
         }
 
         const pOrbitalGeom = createPOrbitalLobeGeometry();
